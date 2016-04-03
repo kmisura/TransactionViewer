@@ -21,6 +21,7 @@ public class ShortestPathCurrencyConverter implements CurrencyConverter {
         G = new EdgeWeightedDigraph(V);
         for (DirectedEdge e : edges) {
             G.addEdge(e);
+            G.addEdge(new DirectedEdge(e.to(), e.from(), 1.0/e.weight()));
         }
     }
 
@@ -28,6 +29,7 @@ public class ShortestPathCurrencyConverter implements CurrencyConverter {
     public double getConversionRate(int currency1, int currency2) {
         if (source != currency1) {
             doBFS(currency1);   //avoid doing BFS if already done with the same source
+            source = currency1;
         }
         return distTo(currency2);
     }
@@ -35,19 +37,21 @@ public class ShortestPathCurrencyConverter implements CurrencyConverter {
     private void doBFS(int s) {
         distTo = new double[G.V()];
         edgeTo = new DirectedEdge[G.V()];
-        for (int v = 0; v < G.V(); v++)
-            distTo[v] = Double.POSITIVE_INFINITY;
-        distTo[s] = 0.0;
+        boolean[] visited = new boolean[G.V()];
 
-        Queue<Integer> pq = new LinkedList<>();
-        pq.add(s);
-        while (!pq.isEmpty()) {
-            int x = pq.poll();
+        Queue<Integer> queue = new LinkedList<>();
+        queue.add(s);
+        visited[s] = true;
+        distTo[s] = 1;
+        while (!queue.isEmpty()) {
+            int x = queue.poll();
             for (DirectedEdge e : G.adj(x)) {
                 int v = e.from(), w = e.to();
-                if (distTo[w] > distTo[v] + e.weight()) {
-                    distTo[w] = distTo[v] + e.weight();
+                if(!visited[w]){
+                    visited[w] = true;
+                    distTo[w] = distTo[v] * e.weight();
                     edgeTo[w] = e;
+                    queue.add(w);
                 }
             }
         }
@@ -61,6 +65,10 @@ public class ShortestPathCurrencyConverter implements CurrencyConverter {
         return distTo[v] < Double.POSITIVE_INFINITY;
     }
 
+
+    /**
+     * Useful to tell the person just what exchanges a person needs to make to get his target currency.
+     */
     public Iterable<DirectedEdge> pathTo(int v) {
         if (!hasPathTo(v)) return null;
         Stack<DirectedEdge> path = new Stack<DirectedEdge>();
