@@ -21,7 +21,8 @@ public class ShortestPathCurrencyConverter implements CurrencyConverter {
         G = new EdgeWeightedDigraph(V);
         for (DirectedEdge e : edges) {
             G.addEdge(e);
-            G.addEdge(new DirectedEdge(e.to(), e.from(), 1.0/e.weight()));
+            G.addEdge(new DirectedEdge(e.to(), e.from(), 1.0/e.weight()));  //TODO: Not sure if we should go back the edges? If this was to test
+            //finding a directed path, then I would say no. But a lot of conversions are impossible in the example if we don't go back on edges
         }
     }
 
