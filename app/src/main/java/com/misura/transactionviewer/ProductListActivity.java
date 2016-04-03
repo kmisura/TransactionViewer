@@ -82,6 +82,15 @@ public class ProductListActivity extends AppCompatActivity {
 
     }
 
+    @Override
+    protected void onDestroy() {
+        if (mReadTransactionsTask != null) {
+            mReadTransactionsTask.cancel(true);
+            mReadTransactionsTask.setActivity(null);
+        }
+        super.onDestroy();
+    }
+
     public class SimpleItemRecyclerViewAdapter
             extends RecyclerView.Adapter<SimpleItemRecyclerViewAdapter.ViewHolder> {
 
@@ -151,15 +160,18 @@ public class ProductListActivity extends AppCompatActivity {
         }
     }
 
-    private static class ReadTransactionsTask extends AsyncTask<Void, Void, List<ProductOverview>>{
+    private static class ReadTransactionsTask extends AsyncTask<Void, Void, List<ProductOverview>> {
         private ProductListActivity mActivity;
 
         /**
-         *
          * @param activity Parent activity. Task is static to avoid memory leaks in case of long operations. Activity should be set
          *                 to null using the setter method when parent activity is destroyed.
          */
-        ReadTransactionsTask(ProductListActivity activity){
+        ReadTransactionsTask(ProductListActivity activity) {
+            mActivity = activity;
+        }
+
+        void setActivity(ProductListActivity activity) {
             mActivity = activity;
         }
 
@@ -174,24 +186,27 @@ public class ProductListActivity extends AppCompatActivity {
                 JSONArray jsonArray = new JSONArray(line);
 
                 SharedPreferences prefs = mActivity.getSharedPreferences(ProductListActivity.class.getSimpleName(), Context.MODE_PRIVATE);
-                boolean saveToDb = ! prefs.getBoolean(PREF_DATA_ALREADY_IN_DB, false);
-                if(saveToDb) {
+                boolean saveToDb = !prefs.getBoolean(PREF_DATA_ALREADY_IN_DB, false);
+                if (saveToDb) {
                     saveTransactionsToDb(jsonArray);
+                    if(isCancelled()){
+                        return null;
+                    }
                     SharedPreferences.Editor editor = prefs.edit();
                     editor.putBoolean(PREF_DATA_ALREADY_IN_DB, true);
                     editor.apply();
                 }
-                for(int i=0;i<jsonArray.length();i++){
+                for (int i = 0; i < jsonArray.length(); i++) {
                     JSONObject jsonTransaction = jsonArray.getJSONObject(i);
                     String sku = jsonTransaction.getString("sku");
-                    if(!counterMap.containsKey(sku)){
+                    if (!counterMap.containsKey(sku)) {
                         counterMap.put(sku, 0);
                     }
                     counterMap.put(sku, counterMap.get(sku) + 1);
                 }
 
                 List<ProductOverview> returnList = new ArrayList<>();
-                for(String sku : counterMap.keySet()){
+                for (String sku : counterMap.keySet()) {
                     returnList.add(new ProductOverview(sku, counterMap.get(sku)));
                 }
 
@@ -203,10 +218,10 @@ public class ProductListActivity extends AppCompatActivity {
                 });
 
                 return returnList;
-            }catch(Exception e){
+            } catch (Exception e) {
                 Log.e(LOG_TAG, "There was a problem while reading the transactions file", e);
-            }finally{
-                if(br != null){
+            } finally {
+                if (br != null) {
                     try {
                         br.close();
                     } catch (IOException e) {
@@ -222,7 +237,9 @@ public class ProductListActivity extends AppCompatActivity {
         private void saveTransactionsToDb(JSONArray jsonTransactions) throws JSONException {
             ContentValues[] cvArray = new ContentValues[jsonTransactions.length()];
 
-            for(int i=0;i<jsonTransactions.length();i++){
+            for (int i = 0; i < jsonTransactions.length(); i++) {
+                if (isCancelled())
+                    break;
                 JSONObject transaction = jsonTransactions.getJSONObject(i);
                 ContentValues transactionValues = new ContentValues();
 
@@ -233,18 +250,20 @@ public class ProductListActivity extends AppCompatActivity {
                 cvArray[i] = transactionValues;
             }
 
-            mActivity.getContentResolver().bulkInsert(TransactionsContract.TransactionEntry.CONTENT_URI, cvArray);
+            if(mActivity != null) {
+                mActivity.getContentResolver().bulkInsert(TransactionsContract.TransactionEntry.CONTENT_URI, cvArray);
+            }
         }
 
         @Override
         protected void onPostExecute(List<ProductOverview> overviews) {
-            if(mActivity != null) {
+            if (mActivity != null && overviews != null) {
                 mActivity.mRecyclerView.setAdapter(mActivity.new SimpleItemRecyclerViewAdapter(overviews));
             }
         }
     }
 
-    private static class ProductOverview{
+    private static class ProductOverview {
         private String sku;
         private int numTransactions;
 
