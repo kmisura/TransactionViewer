@@ -131,7 +131,8 @@ public class ProductDetailFragment extends Fragment implements LoaderManager.Loa
             holder.mItem = mValues.get(position);
             holder.mIdView.setText(holder.mItem.currency + " " + holder.mItem.amount);
             double amountInPounds = mExchangeOffice.exchange(holder.mItem.currency, "GBP", holder.mItem.amount);
-            holder.mContentView.setText("GBP " + amountInPounds);
+            String description = getString(R.string.amount_in_curr, "GBP", amountInPounds);
+            holder.mContentView.setText(description);
         }
 
         @Override
