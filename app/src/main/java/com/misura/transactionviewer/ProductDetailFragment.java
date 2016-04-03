@@ -3,9 +3,7 @@ package com.misura.transactionviewer;
 import android.app.Activity;
 import android.app.Fragment;
 import android.app.LoaderManager;
-import android.content.Context;
 import android.content.CursorLoader;
-import android.content.Intent;
 import android.content.Loader;
 import android.database.Cursor;
 import android.net.Uri;
@@ -17,8 +15,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.misura.transactionviewer.conversion.ExchangeOffice;
 import com.misura.transactionviewer.data.TransactionsContract;
-import com.misura.transactionviewer.dummy.DummyContent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,9 +42,9 @@ public class ProductDetailFragment extends Fragment implements LoaderManager.Loa
     public static final int COL_AMOUNT = 2;
     public static final int COL_CURRENCY = 3;
 
-    private DummyContent.Product mItem;
     private String mSKU;
     private RecyclerView mRecyclerView;
+    private ExchangeOffice mExchangeOffice;
 
     public ProductDetailFragment() {
     }
@@ -67,6 +65,8 @@ public class ProductDetailFragment extends Fragment implements LoaderManager.Loa
                 appBarLayout.setTitle("Transactions for " + mSKU);//TODO move to strings.xml and add formatting
             }
         }
+
+        mExchangeOffice = ExchangeOffice.getInstance(getActivity());
     }
 
     @Override
@@ -130,7 +130,8 @@ public class ProductDetailFragment extends Fragment implements LoaderManager.Loa
         public void onBindViewHolder(final ViewHolder holder, int position) {
             holder.mItem = mValues.get(position);
             holder.mIdView.setText(holder.mItem.currency + " " + holder.mItem.amount);
-            holder.mContentView.setText("in POUNDS");
+            double amountInPounds = mExchangeOffice.exchange(holder.mItem.currency, "GBP", holder.mItem.amount);
+            holder.mContentView.setText("GBP " + amountInPounds);
         }
 
         @Override
