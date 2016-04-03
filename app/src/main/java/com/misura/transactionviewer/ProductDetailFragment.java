@@ -3,12 +3,15 @@ package com.misura.transactionviewer;
 import android.app.Activity;
 import android.app.Fragment;
 import android.app.LoaderManager;
+import android.content.Context;
 import android.content.CursorLoader;
+import android.content.Intent;
 import android.content.Loader;
 import android.database.Cursor;
 import android.net.Uri;
 import android.support.design.widget.CollapsingToolbarLayout;
 import android.os.Bundle;
+import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,6 +19,9 @@ import android.widget.TextView;
 
 import com.misura.transactionviewer.data.TransactionsContract;
 import com.misura.transactionviewer.dummy.DummyContent;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A fragment representing a single Product detail screen.
@@ -40,7 +46,7 @@ public class ProductDetailFragment extends Fragment implements LoaderManager.Loa
 
     private DummyContent.Product mItem;
     private String mSKU;
-    private TextView mTextView;
+    private RecyclerView mRecyclerView;
 
     public ProductDetailFragment() {
     }
@@ -58,7 +64,7 @@ public class ProductDetailFragment extends Fragment implements LoaderManager.Loa
             Activity activity = this.getActivity();
             CollapsingToolbarLayout appBarLayout = (CollapsingToolbarLayout) activity.findViewById(R.id.toolbar_layout);
             if (appBarLayout != null) {
-                appBarLayout.setTitle("Transactions for ...");//TODO
+                appBarLayout.setTitle("Transactions for " + mSKU);//TODO move to strings.xml and add formatting
             }
         }
     }
@@ -68,7 +74,7 @@ public class ProductDetailFragment extends Fragment implements LoaderManager.Loa
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.product_detail, container, false);
 
-        mTextView = (TextView) rootView.findViewById(R.id.product_detail);
+        mRecyclerView = (RecyclerView) rootView.findViewById(R.id.product_detail);
 
         return rootView;
     }
@@ -87,18 +93,78 @@ public class ProductDetailFragment extends Fragment implements LoaderManager.Loa
 
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
-        if (data != null && data.moveToFirst()) {
-            int count = 0;
+        List<Transaction> transactions = new ArrayList<>();
+        if (data != null) {
+            data.moveToNext();
             while(!data.isAfterLast()){
-                count++;
+                Transaction transaction = new Transaction(data.getDouble(COL_AMOUNT), data.getString(COL_CURRENCY));
+                transactions.add(transaction);
                 data.moveToNext();
             }
-            mTextView.setText("" + count);
         }
+        mRecyclerView.setAdapter(new SimpleItemRecyclerViewAdapter(transactions));
     }
 
     @Override
     public void onLoaderReset(Loader<Cursor> loader) {
 
+    }
+
+    public class SimpleItemRecyclerViewAdapter
+            extends RecyclerView.Adapter<SimpleItemRecyclerViewAdapter.ViewHolder> {
+
+        private final List<Transaction> mValues;
+
+        public SimpleItemRecyclerViewAdapter(List<Transaction> items) {
+            mValues = items;
+        }
+
+        @Override
+        public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+            View view = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.product_list_content, parent, false);
+            return new ViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(final ViewHolder holder, int position) {
+            holder.mItem = mValues.get(position);
+            holder.mIdView.setText(holder.mItem.currency + " " + holder.mItem.amount);
+            holder.mContentView.setText("in POUNDS");
+        }
+
+        @Override
+        public int getItemCount() {
+            return mValues.size();
+        }
+
+        public class ViewHolder extends RecyclerView.ViewHolder {
+            public final View mView;
+            public final TextView mIdView;
+            public final TextView mContentView;
+            public Transaction mItem;
+
+            public ViewHolder(View view) {
+                super(view);
+                mView = view;
+                mIdView = (TextView) view.findViewById(R.id.id);
+                mContentView = (TextView) view.findViewById(R.id.content);
+            }
+
+            @Override
+            public String toString() {
+                return super.toString() + " '" + mContentView.getText() + "'";
+            }
+        }
+    }
+
+    private class Transaction{
+        private double amount;
+        private String currency;
+
+        public Transaction(double amount, String currency) {
+            this.amount = amount;
+            this.currency = currency;
+        }
     }
 }
